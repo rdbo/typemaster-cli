@@ -21,12 +21,14 @@ use rand::{
 
 pub struct TypeMaster {
     wordlist : Vec<&'static str>,
-    is_playing : bool
+    is_playing : bool,
+    word_input : String,
+    cursor_pos : usize
 }
 
 impl TypeMaster {
     pub fn new() -> Self {
-        Self { wordlist: vec![], is_playing: false }
+        Self { wordlist: vec![], is_playing: false, word_input: String::new(), cursor_pos: 0 }
     }
 
     pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
@@ -36,6 +38,40 @@ impl TypeMaster {
                 match key.code {
                     KeyCode::Esc => break,
                     KeyCode::Enter => self.play(),
+                    KeyCode::Backspace => {
+                        if self.cursor_pos > 0 {
+                            self.word_input.remove(self.cursor_pos - 1);
+                            self.cursor_pos -= 1;
+                        }
+                    },
+                    KeyCode::Delete => {
+                        if self.word_input.len() > self.cursor_pos {
+                            self.word_input.remove(self.cursor_pos);
+                        }
+                    },
+                    KeyCode::Left => {
+                        if self.cursor_pos > 0 {
+                            self.cursor_pos -= 1;
+                        }
+                    },
+                    KeyCode::Right => {
+                        if self.cursor_pos < self.word_input.len() {
+                            self.cursor_pos += 1;
+                        }
+                    },
+                    KeyCode::Char(' ') => {
+                        if self.wordlist.len() > 0 && self.word_input == self.wordlist[0] {
+                            self.wordlist.remove(0);
+                            self.word_input.clear();
+                            self.cursor_pos = 0;
+                        }
+                    },
+                    KeyCode::Char(c) => {
+                        if self.is_playing {
+                            self.word_input.insert(self.cursor_pos, c);
+                            self.cursor_pos += 1;
+                        }
+                    },
                     _ => {  }
                 }
             }
@@ -96,8 +132,13 @@ impl TypeMaster {
                 let words = self.wordlist.join(" ");
                 let words_box = Paragraph::new(Span::styled(words, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
 
+                let input_area = Rect::new(words_block_area.x, words_block_area.height + words_block_area.y + 2, words_block_area.width, 2);
+                let mut input_content = String::from("> ");
+                input_content.push_str(&self.word_input);
+                let input_text = Paragraph::new(Span::styled(input_content, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
                 f.render_widget(words_block, words_block_area);
                 f.render_widget(words_box, words_box_area);
+                f.render_widget(input_text, input_area);
             }
         })?;
 
