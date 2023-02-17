@@ -23,12 +23,13 @@ pub struct TypeMaster {
     wordlist : Vec<&'static str>,
     is_playing : bool,
     word_input : String,
-    cursor_pos : usize
+    cursor_pos : usize,
+    char_count : usize
 }
 
 impl TypeMaster {
     pub fn new() -> Self {
-        Self { wordlist: vec![], is_playing: false, word_input: String::new(), cursor_pos: 0 }
+        Self { wordlist: vec![], is_playing: false, word_input: String::new(), cursor_pos: 0, char_count : 0 }
     }
 
     pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
@@ -61,6 +62,7 @@ impl TypeMaster {
                     },
                     KeyCode::Char(' ') => {
                         if self.wordlist.len() > 0 && self.word_input == self.wordlist[0] {
+                            self.char_count += self.word_input.len();
                             self.wordlist.remove(0);
                             self.word_input.clear();
                             self.cursor_pos = 0;
@@ -136,9 +138,15 @@ impl TypeMaster {
                 let mut input_content = String::from("> ");
                 input_content.push_str(&self.word_input);
                 let input_text = Paragraph::new(Span::styled(input_content, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
+
+                let word_count_area = Rect::new(input_area.x, input_area.y + 2, input_area.width, 1);
+                let mut word_count_content = String::from("Words: ");
+                word_count_content.push_str(&(self.char_count / 5).to_string());
+                let word_count_text = Paragraph::new(Span::styled(word_count_content, Style::default()));
                 f.render_widget(words_block, words_block_area);
                 f.render_widget(words_box, words_box_area);
                 f.render_widget(input_text, input_area);
+                f.render_widget(word_count_text, word_count_area);
             }
         })?;
 
