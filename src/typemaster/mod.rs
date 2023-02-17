@@ -4,7 +4,7 @@ use wordlist::get_wordlist;
 use tui::{
     Terminal,
     backend::Backend,
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     layout::{Layout, Alignment, Rect, Constraint, Direction},
     text::Span,
     style::{Style, Color, Modifier}
@@ -12,6 +12,11 @@ use tui::{
 
 use crossterm::{
     event::{self, Event, KeyCode}
+};
+
+use rand::{
+    thread_rng,
+    seq::SliceRandom
 };
 
 pub struct TypeMaster {
@@ -29,8 +34,8 @@ impl TypeMaster {
             self.draw(terminal)?;
             if let Event::Key(key) = event::read()? {
                 match key.code {
-                    KeyCode::Char('q') => break,
-                    KeyCode::Enter => self.is_playing = true,
+                    KeyCode::Esc => break,
+                    KeyCode::Enter => self.play(),
                     _ => {  }
                 }
             }
@@ -39,13 +44,26 @@ impl TypeMaster {
         Ok(())
     }
 
+    fn play(&mut self) {
+        if !self.is_playing {
+            self.wordlist = get_wordlist();
+            self.wordlist.shuffle(&mut thread_rng());
+            self.is_playing = true;
+        }
+    }
+
     fn draw<B: Backend>(&self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
 		// colors
 		let blue = Color::Rgb(0x20, 0x45, 0x90);
 		let baby_blue = Color::Rgb(0x40, 0x90, 0xff);
 
 		// elements
-        let title = vec![Span::raw("[ "), Span::styled("TYPE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)), Span::styled("MASTER", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)), Span::raw(" ]")];
+        let title = vec![
+            Span::raw("[ "),
+            Span::styled("TYPE", Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+            Span::styled("MASTER", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(" ]")
+        ];
 
 		let root_block = Block::default()
 			.title(title)
@@ -54,10 +72,10 @@ impl TypeMaster {
 			.border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))
 			.style(Style::default().bg(blue));
 
-        let comment = Paragraph::new(Span::styled("Made by rdbo", Style::default().fg(Color::White))).alignment(Alignment::Center);
+        let comment = Paragraph::new(Span::styled("Made by rdbo", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
 
         let play_text_block = Block::default().style(Style::default().bg(Color::White)).borders(Borders::ALL).border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD));
-        let play_text = Paragraph::new(Span::styled("PRESS ENTER TO PLAY", Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))).alignment(Alignment::Center);
+        let play_text = Paragraph::new(Span::styled("PRESS ENTER TO PLAY", Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))).alignment(Alignment::Center).wrap(Wrap{ trim: true });
 
 		// draw
         terminal.draw(|f| {
@@ -71,6 +89,15 @@ impl TypeMaster {
             if !self.is_playing {
     			f.render_widget(play_text_block, center_area);
                 f.render_widget(play_text, play_text_area);
+            } else {
+                let words_box_area = centered_rect(40, 40, size);
+                let words_block_area = Rect::new(words_box_area.x - 2, words_box_area.y - 2, words_box_area.width + 4, words_box_area.height + 4);
+                let words_block = Block::default().style(Style::default().bg(baby_blue)).borders(Borders::ALL);
+                let words = self.wordlist.join(" ");
+                let words_box = Paragraph::new(Span::styled(words, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
+
+                f.render_widget(words_block, words_block_area);
+                f.render_widget(words_box, words_box_area);
             }
         })?;
 
