@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = Terminal::new(backend)?;
 
     // run app
-    let app = TypeMaster::new();
+    let mut app = TypeMaster::new();
     let res = app.run(&mut terminal);
 
     // restore terminal

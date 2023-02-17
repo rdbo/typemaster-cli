@@ -15,20 +15,22 @@ use crossterm::{
 };
 
 pub struct TypeMaster {
-    wordlist : Vec<&'static str>
+    wordlist : Vec<&'static str>,
+    is_playing : bool
 }
 
 impl TypeMaster {
     pub fn new() -> Self {
-        Self { wordlist: vec![] }
+        Self { wordlist: vec![], is_playing: false }
     }
 
-    pub fn run<B: Backend>(&self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
+    pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
         loop {
             self.draw(terminal)?;
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => break,
+                    KeyCode::Enter => self.is_playing = true,
                     _ => {  }
                 }
             }
@@ -66,8 +68,10 @@ impl TypeMaster {
 
             f.render_widget(root_block, size);
             f.render_widget(comment, comment_area);
-			f.render_widget(play_text_block, center_area);
-            f.render_widget(play_text, play_text_area);
+            if !self.is_playing {
+    			f.render_widget(play_text_block, center_area);
+                f.render_widget(play_text, play_text_area);
+            }
         })?;
 
         Ok(())
