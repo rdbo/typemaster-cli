@@ -11,7 +11,7 @@ use tui::{
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode}
+    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers}
 };
 
 use rand::{
@@ -21,6 +21,7 @@ use rand::{
 
 pub struct TypeMaster {
     wordlist : Vec<&'static str>,
+    show_play : bool,
     is_playing : bool,
     word_input : String,
     cursor_pos : usize,
@@ -29,7 +30,7 @@ pub struct TypeMaster {
 
 impl TypeMaster {
     pub fn new() -> Self {
-        Self { wordlist: vec![], is_playing: false, word_input: String::new(), cursor_pos: 0, char_count : 0 }
+        Self { wordlist: vec![], show_play: false, is_playing: false, word_input: String::new(), cursor_pos: 0, char_count : 0 }
     }
 
     pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
@@ -69,7 +70,10 @@ impl TypeMaster {
                         }
                     },
                     KeyCode::Char(c) => {
-                        if self.is_playing {
+                        if (c == 'u' || c == 'U') && (key.modifiers.bits() & KeyModifiers::CONTROL.bits()) > 0 {
+                            self.word_input.clear();
+                            self.cursor_pos = 0;
+                        } else if self.is_playing {
                             self.word_input.insert(self.cursor_pos, c);
                             self.cursor_pos += 1;
                         }
@@ -83,6 +87,10 @@ impl TypeMaster {
     }
 
     fn play(&mut self) {
+        if !self.show_play {
+            self.show_play = true;
+        }
+
         if !self.is_playing {
             self.wordlist = get_wordlist();
             self.wordlist.shuffle(&mut thread_rng());
@@ -124,7 +132,7 @@ impl TypeMaster {
 
             f.render_widget(root_block, size);
             f.render_widget(comment, comment_area);
-            if !self.is_playing {
+            if !self.show_play {
     			f.render_widget(play_text_block, center_area);
                 f.render_widget(play_text, play_text_area);
             } else {
