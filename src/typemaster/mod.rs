@@ -23,7 +23,8 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-static COUNTDOWN : Mutex<i32> = Mutex::new(0);
+const COUNTDOWN_START : usize = 60; // initial countdown value (in seconds)
+static COUNTDOWN : Mutex<usize> = Mutex::new(0);
 
 pub struct TypeMaster {
     wordlist : Vec<&'static str>,
@@ -115,7 +116,7 @@ impl TypeMaster {
         if !self.is_playing {
             self.wordlist = get_wordlist();
             self.wordlist.shuffle(&mut thread_rng());
-            *COUNTDOWN.lock().unwrap() = 60;
+            *COUNTDOWN.lock().unwrap() = COUNTDOWN_START;
         }
     }
 
@@ -168,25 +169,48 @@ impl TypeMaster {
                 input_content.push_str(&self.word_input);
                 let input_text = Paragraph::new(Span::styled(input_content, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
 
+                let word_count = self.char_count / 5;
                 let word_count_area = Rect::new(input_area.x, input_area.y + 2, input_area.width, 1);
                 let mut word_count_content = String::from("Words: ");
-                word_count_content.push_str(&(self.char_count / 5).to_string());
-                let word_count_text = Paragraph::new(Span::styled(word_count_content, Style::default()));
+                word_count_content.push_str(&(word_count).to_string());
+                let word_count_text = Paragraph::new(Span::styled(word_count_content, Style::default().add_modifier(Modifier::BOLD)));
 
                 let mut countdown_secs = *COUNTDOWN.lock().unwrap();
                 let countdown_mins = countdown_secs / 60;
                 countdown_secs -= countdown_mins * 60;
+                let mut countdown_mins_str = countdown_mins.to_string();
+                let mut countdown_secs_str = countdown_secs.to_string();
+
+                for s in [&mut countdown_mins_str, &mut countdown_secs_str] {
+                    if s.len() < 2 {
+                        s.insert(0, '0');
+                    }
+                }
+
                 let mut countdown_content = String::new();
-                countdown_content.push_str(&countdown_mins.to_string());
+                countdown_content.push_str(&countdown_mins_str);
                 countdown_content.push_str(":");
-                countdown_content.push_str(&countdown_secs.to_string());
-                let countdown_text = Paragraph::new(Span::styled(countdown_content, Style::default()));
+                countdown_content.push_str(&countdown_secs_str);
+                let countdown_text = Paragraph::new(Span::styled(countdown_content, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))).alignment(Alignment::Right);
                 let countdown_area = Rect::new(words_block_area.x, words_block_area.y - 2, words_block_area.width, 2);
+
+                let ellapsed_time = COUNTDOWN_START - *COUNTDOWN.lock().unwrap();
+                let wpm = if ellapsed_time > 0 {
+                    word_count * (COUNTDOWN_START / ellapsed_time)
+                } else {
+                    0
+                };
+                let wpm_area = countdown_area;
+                let mut wpm_content = String::from("WPM: ");
+                wpm_content.push_str(&(wpm).to_string());
+                let wpm_text = Paragraph::new(Span::styled(wpm_content, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))).alignment(Alignment::Center);
+
                 f.render_widget(countdown_text, countdown_area);
                 f.render_widget(words_block, words_block_area);
                 f.render_widget(words_box, words_box_area);
                 f.render_widget(input_text, input_area);
                 f.render_widget(word_count_text, word_count_area);
+                f.render_widget(wpm_text, wpm_area);
             }
         })?;
 
