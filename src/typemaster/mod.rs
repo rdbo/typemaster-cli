@@ -11,7 +11,7 @@ use tui::{
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers}
+    event::{self, Event, KeyCode, KeyModifiers}
 };
 
 use rand::{
