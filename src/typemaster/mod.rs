@@ -23,13 +23,14 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-const COUNTDOWN_START : usize = 60; // initial countdown value (in seconds)
+const COUNTDOWN_START : usize = 5; // initial countdown value (in seconds)
 static COUNTDOWN : Mutex<usize> = Mutex::new(0);
+static IS_PLAYING : Mutex<bool> = Mutex::new(false);
+static SHOW_RESULT : Mutex<bool> = Mutex::new(false);
 
 pub struct TypeMaster {
     wordlist : Vec<&'static str>,
     show_play : bool,
-    is_playing : bool,
     word_input : String,
     cursor_pos : usize,
     char_count : usize,
@@ -37,7 +38,7 @@ pub struct TypeMaster {
 
 impl TypeMaster {
     pub fn new() -> Self {
-        Self { wordlist: vec![], show_play: false, is_playing: false, word_input: String::new(), cursor_pos: 0, char_count : 0 }
+        Self { wordlist: vec![], show_play: false, word_input: String::new(), cursor_pos: 0, char_count : 0 }
     }
 
     pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
@@ -52,7 +53,13 @@ impl TypeMaster {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc => break,
-                    KeyCode::Enter => self.play(),
+                    KeyCode::Enter => {
+                        if *SHOW_RESULT.lock().unwrap() {
+                            *SHOW_RESULT.lock().unwrap() = false;
+                        } else {
+                            self.play();
+                        }
+                    },
                     KeyCode::Backspace => {
                         if self.cursor_pos > 0 {
                             self.word_input.remove(self.cursor_pos - 1);
@@ -87,17 +94,24 @@ impl TypeMaster {
                             self.word_input.clear();
                             self.cursor_pos = 0;
                         } else {
-                            if !self.is_playing {
+                            if !*IS_PLAYING.lock().unwrap() {
                                 thread::spawn(|| {
                                     while *COUNTDOWN.lock().unwrap() > 0 {
                                         thread::sleep(Duration::from_secs(1));
                                         *COUNTDOWN.lock().unwrap() -= 1;
                                     }
+
+                                    *IS_PLAYING.lock().unwrap() = false;
+                                    *SHOW_RESULT.lock().unwrap() = true;
                                 });
-                                self.is_playing = true;
+
+                                *IS_PLAYING.lock().unwrap() = true;
                             }
-                            self.word_input.insert(self.cursor_pos, c);
-                            self.cursor_pos += 1;
+
+                            if *COUNTDOWN.lock().unwrap() > 0 {
+                                self.word_input.insert(self.cursor_pos, c);
+                                self.cursor_pos += 1;
+                            }
                         }
                     },
                     _ => {  }
@@ -113,14 +127,17 @@ impl TypeMaster {
             self.show_play = true;
         }
 
-        if !self.is_playing {
+        if !*IS_PLAYING.lock().unwrap() {
             self.wordlist = get_wordlist();
             self.wordlist.shuffle(&mut thread_rng());
+            self.char_count = 0;
+            self.cursor_pos = 0;
+            self.word_input.clear();
             *COUNTDOWN.lock().unwrap() = COUNTDOWN_START;
         }
     }
 
-    fn draw<B: Backend>(&self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
+    fn draw<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
 		// colors
 		let blue = Color::Rgb(0x20, 0x45, 0x90);
 		let baby_blue = Color::Rgb(0x40, 0x90, 0xff);
@@ -196,7 +213,7 @@ impl TypeMaster {
 
                 let ellapsed_time = COUNTDOWN_START - *COUNTDOWN.lock().unwrap();
                 let wpm = if ellapsed_time > 0 {
-                    word_count * (COUNTDOWN_START / ellapsed_time)
+                    word_count * (60 / ellapsed_time)
                 } else {
                     0
                 };
@@ -211,6 +228,21 @@ impl TypeMaster {
                 f.render_widget(input_text, input_area);
                 f.render_widget(word_count_text, word_count_area);
                 f.render_widget(wpm_text, wpm_area);
+
+                // TODO: Add popup with result message
+                if *SHOW_RESULT.lock().unwrap() {
+                    let len = if self.word_input.len() <= self.wordlist[0].len() { self.word_input.len() } else { self.wordlist[0].len() };
+                    for i in 0..len {
+                        if self.word_input.chars().nth(i).unwrap() != self.wordlist[0].chars().nth(i).unwrap() {
+                            break;
+                        }
+
+                        self.char_count += 1;
+                    }
+                    self.cursor_pos = 0;
+                    self.word_input.clear();
+                    *SHOW_RESULT.lock().unwrap() = false; // TODO: Remove this. SHOW_RESULT
+                }
             }
         })?;
 
