@@ -19,13 +19,19 @@ use rand::{
     seq::SliceRandom
 };
 
+use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
+
+static COUNTDOWN : Mutex<i32> = Mutex::new(0);
+
 pub struct TypeMaster {
     wordlist : Vec<&'static str>,
     show_play : bool,
     is_playing : bool,
     word_input : String,
     cursor_pos : usize,
-    char_count : usize
+    char_count : usize,
 }
 
 impl TypeMaster {
@@ -36,6 +42,12 @@ impl TypeMaster {
     pub fn run<B: Backend>(&mut self, terminal : &mut Terminal<B>) -> Result<(), std::io::Error>{
         loop {
             self.draw(terminal)?;
+            
+            // this ensures that the terminal doesn't only update on events
+            if !event::poll(Duration::from_millis(100))? {
+                continue
+            }
+
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Esc => break,
@@ -73,7 +85,16 @@ impl TypeMaster {
                         if (c == 'u' || c == 'U') && (key.modifiers.bits() & KeyModifiers::CONTROL.bits()) > 0 {
                             self.word_input.clear();
                             self.cursor_pos = 0;
-                        } else if self.is_playing {
+                        } else {
+                            if !self.is_playing {
+                                thread::spawn(|| {
+                                    while *COUNTDOWN.lock().unwrap() > 0 {
+                                        thread::sleep(Duration::from_secs(1));
+                                        *COUNTDOWN.lock().unwrap() -= 1;
+                                    }
+                                });
+                                self.is_playing = true;
+                            }
                             self.word_input.insert(self.cursor_pos, c);
                             self.cursor_pos += 1;
                         }
@@ -94,7 +115,7 @@ impl TypeMaster {
         if !self.is_playing {
             self.wordlist = get_wordlist();
             self.wordlist.shuffle(&mut thread_rng());
-            self.is_playing = true;
+            *COUNTDOWN.lock().unwrap() = 60;
         }
     }
 
@@ -151,6 +172,17 @@ impl TypeMaster {
                 let mut word_count_content = String::from("Words: ");
                 word_count_content.push_str(&(self.char_count / 5).to_string());
                 let word_count_text = Paragraph::new(Span::styled(word_count_content, Style::default()));
+
+                let mut countdown_secs = *COUNTDOWN.lock().unwrap();
+                let countdown_mins = countdown_secs / 60;
+                countdown_secs -= countdown_mins * 60;
+                let mut countdown_content = String::new();
+                countdown_content.push_str(&countdown_mins.to_string());
+                countdown_content.push_str(":");
+                countdown_content.push_str(&countdown_secs.to_string());
+                let countdown_text = Paragraph::new(Span::styled(countdown_content, Style::default()));
+                let countdown_area = Rect::new(words_block_area.x, words_block_area.y - 2, words_block_area.width, 2);
+                f.render_widget(countdown_text, countdown_area);
                 f.render_widget(words_block, words_block_area);
                 f.render_widget(words_box, words_box_area);
                 f.render_widget(input_text, input_area);
