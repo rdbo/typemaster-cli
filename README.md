@@ -8,6 +8,7 @@ A terminal-based typing test written in Rust
 Make sure you have installed:
 - Git
 - Rust (rustup recommended)
+
 Run the following commands:
 ```
 git clone https://github.com/rdbo/typemaster-cli
