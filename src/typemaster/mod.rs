@@ -90,15 +90,29 @@ impl TypeMaster {
                         }
                     },
                     KeyCode::Char(c) => {
-                        if (c == 'u' || c == 'U') && (key.modifiers.bits() & KeyModifiers::CONTROL.bits()) > 0 {
-                            self.word_input.clear();
-                            self.cursor_pos = 0;
+                        if (key.modifiers.bits() & KeyModifiers::CONTROL.bits()) > 0 {
+                            if c == 'u' || c == 'U' {
+                                self.word_input.clear();
+                                self.cursor_pos = 0;
+                            } else if c == 'c' || c == 'C' {
+                                *COUNTDOWN.lock().unwrap() = 0;
+                                // wait for thread to exit
+                                while *IS_PLAYING.lock().unwrap() {
+                                    
+                                }
+                                *SHOW_RESULT.lock().unwrap() = false;
+                                self.char_count = 0;
+                                self.cursor_pos = 0;
+                                self.word_input.clear();
+                            }
                         } else {
                             if !*IS_PLAYING.lock().unwrap() {
                                 thread::spawn(|| {
                                     while *COUNTDOWN.lock().unwrap() > 0 {
                                         thread::sleep(Duration::from_secs(1));
-                                        *COUNTDOWN.lock().unwrap() -= 1;
+                                        if *COUNTDOWN.lock().unwrap() > 0 {
+                                            *COUNTDOWN.lock().unwrap() -= 1;
+                                        }
                                     }
 
                                     *IS_PLAYING.lock().unwrap() = false;
@@ -157,7 +171,7 @@ impl TypeMaster {
 			.border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))
 			.style(Style::default().bg(blue));
 
-        let comment = Paragraph::new(Span::styled("Made by rdbo | Start Typing to Begin Test | ENTER: Reset | ESC: Exit", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
+        let comment = Paragraph::new(Span::styled("Made by rdbo | Start Typing to Begin Test | ESC: Exit | ENTER: Reset | Ctrl-U: Clear Line | Ctrl-C: Stop Test", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
 
         let play_text_block = Block::default().style(Style::default().bg(Color::White)).borders(Borders::ALL).border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD));
         let play_text = Paragraph::new(Span::styled("PRESS ENTER TO PLAY", Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))).alignment(Alignment::Center).wrap(Wrap{ trim: true });
