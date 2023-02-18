@@ -157,7 +157,7 @@ impl TypeMaster {
 			.border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))
 			.style(Style::default().bg(blue));
 
-        let comment = Paragraph::new(Span::styled("Made by rdbo - Press ENTER to Reset", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
+        let comment = Paragraph::new(Span::styled("Made by rdbo | Start Typing to Begin Test | ENTER: Reset | ESC: Exit", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
 
         let play_text_block = Block::default().style(Style::default().bg(Color::White)).borders(Borders::ALL).border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD));
         let play_text = Paragraph::new(Span::styled("PRESS ENTER TO PLAY", Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))).alignment(Alignment::Center).wrap(Wrap{ trim: true });
