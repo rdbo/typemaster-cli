@@ -171,7 +171,7 @@ impl TypeMaster {
 			.border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))
 			.style(Style::default().bg(blue));
 
-        let comment = Paragraph::new(Span::styled("Made by rdbo | Start Typing to Begin Test | ESC: Exit | ENTER: Restart | Ctrl-U: Clear Line | Ctrl-C: Stop Test", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
+        let comment = Paragraph::new(Span::styled("Made by rdbo | Start Typing to Begin Test | ESC: Exit | ENTER: Restart | Ctrl-C: Stop Test | Ctrl-U: Clear Line | Left/Right Arrow: Move Cursor | Backspace: Remove Previous Character | Delete: Remove Current Character", Style::default().fg(Color::White))).alignment(Alignment::Center).wrap(Wrap { trim: true});
 
         let play_text_block = Block::default().style(Style::default().bg(Color::White)).borders(Borders::ALL).border_style(Style::default().fg(baby_blue).add_modifier(Modifier::BOLD));
         let play_text = Paragraph::new(Span::styled("PRESS ENTER TO PLAY", Style::default().fg(baby_blue).add_modifier(Modifier::BOLD))).alignment(Alignment::Center).wrap(Wrap{ trim: true });
@@ -179,7 +179,7 @@ impl TypeMaster {
 		// draw
         terminal.draw(|f| {
             let size = f.size();
-            let comment_area = Rect::new(size.x, size.y + 2, size.width, 2);
+            let comment_area = Rect::new(size.x + 2, size.y + 2, size.width - 2, 8);
 			let center_area = centered_rect(40, 10, size);
             let play_text_area = Rect::new(center_area.x, center_area.y + center_area.height / 2, center_area.width, center_area.height / 2);
 
