@@ -6,7 +6,7 @@ use tui::{
     backend::Backend,
     widgets::{Block, Borders, Paragraph, Wrap},
     layout::{Layout, Alignment, Rect, Constraint, Direction},
-    text::Span,
+    text::{Span, Spans},
     style::{Style, Color, Modifier}
 };
 
@@ -23,7 +23,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-const COUNTDOWN_START : usize = 5; // initial countdown value (in seconds)
+const COUNTDOWN_START : usize = 60; // initial countdown value (in seconds)
 static COUNTDOWN : Mutex<usize> = Mutex::new(0);
 static IS_PLAYING : Mutex<bool> = Mutex::new(false);
 static SHOW_RESULT : Mutex<bool> = Mutex::new(false);
@@ -196,9 +196,19 @@ impl TypeMaster {
                 let words_box = Paragraph::new(Span::styled(words, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
 
                 let input_area = Rect::new(words_block_area.x, words_block_area.height + words_block_area.y + 2, words_block_area.width, 2);
-                let mut input_content = String::from("> ");
-                input_content.push_str(&self.word_input);
-                let input_text = Paragraph::new(Span::styled(input_content, Style::default().fg(Color::White).add_modifier(Modifier::BOLD))).wrap(Wrap{ trim: true });
+                let input_style = Style::default().fg(Color::White).add_modifier(Modifier::BOLD);
+                let cursor_style = input_style.bg(baby_blue).fg(Color::Yellow);
+                let mut input_content : Vec<Span> = vec![Span::styled(String::from("> "), input_style)];
+                // paint cursor
+                if self.cursor_pos < self.word_input.len() {
+                    input_content.push(Span::styled(&self.word_input[0..self.cursor_pos], input_style));
+                    input_content.push(Span::styled(&self.word_input[self.cursor_pos..(self.cursor_pos + 1)], cursor_style));
+                    input_content.push(Span::styled(&self.word_input[(self.cursor_pos + 1)..], input_style));
+                } else {
+                    input_content.push(Span::styled(&self.word_input, input_style));
+                    input_content.push(Span::styled("|", cursor_style.fg(baby_blue)));
+                }
+                let input_text = Paragraph::new(Spans::from(input_content)).wrap(Wrap{ trim: true });
 
                 let word_count = self.char_count / 5;
                 let word_count_area = Rect::new(input_area.x, input_area.y + 2, input_area.width, 1);
