@@ -13,9 +13,9 @@ Run the following commands:
 ```
 git clone https://github.com/rdbo/typemaster-cli
 cd typemaster-cli
-cargo build
+cargo build --release
 ```
 Use the following command to run TypeMaster:
 ```
-cargo run
+cargo run --release
 ```
